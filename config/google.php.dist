@@ -1,0 +1,16 @@
+<?php
+
+return [
+
+    'client_id' => '',
+    'client_secret' => '',
+    'token_uri' => '',
+    'redirect_uris' => '',
+    'application_name' => '',
+
+    'drive_scopes' => [
+        \Google_Service_Drive::DRIVE_READONLY,
+        \Google_Service_Drive::DRIVE_METADATA_READONLY,
+        \Google_Service_Drive::DRIVE_PHOTOS_READONLY,
+    ]
+];

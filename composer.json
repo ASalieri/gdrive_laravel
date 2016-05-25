@@ -18,11 +18,12 @@
     },
     "autoload": {
         "classmap": [
-            "database"
+            "database",
+            "vendor/google/apiclient/src/Google"
         ],
         "psr-4": {
             "Nysci\\": "app/"
-        }
+        },
     },
     "autoload-dev": {
         "classmap": [

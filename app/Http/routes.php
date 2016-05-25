@@ -14,3 +14,8 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::group(['prefix' => 'viewer'], function() {
+    Route::get('/', 'ViewerController@index');
+    Route::get('/oauth2callback', 'ViewerController@oauth2callback');
+});
