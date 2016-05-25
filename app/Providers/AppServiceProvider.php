@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Providers;
+namespace Nysci\Providers;
 
 use Illuminate\Support\ServiceProvider;
 

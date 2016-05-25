@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events;
+namespace Nysci\Events;
 
 abstract class Event
 {
