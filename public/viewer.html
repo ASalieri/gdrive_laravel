@@ -74,7 +74,7 @@
               request = gapi.client.drive.files.list({
                 'q' : "'"+folderId+"' in parents",
                 'pageToken': nextPageToken,
-                'fields': "files(id,originalFilename,webContentLink,kind)"
+                'fields': "files(id,name,originalFilename,webContentLink,kind)"
               });
               retrievePageOfChildren(request, result);
             } else {
@@ -84,7 +84,7 @@
         };
         var initialRequest = gapi.client.drive.files.list({
           'q' : "'"+folderId+"' in parents",
-          'fields': "files(id,originalFilename,webContentLink,kind)"
+          'fields': "files(id,name,originalFilename,webContentLink,kind)"
         });
         retrievePageOfChildren(initialRequest, []);
       }
@@ -138,7 +138,7 @@
 
         var main_request = gapi.client.drive.files.get({
           'fileId': main_file_id,
-          'fields': "id,webContentLink,parents,originalFilename,fileExtension,kind"
+          'fields': "id,webContentLink,parents,name,originalFilename,fileExtension,kind"
         });
 
         main_request.execute(function(resp) {
@@ -150,7 +150,7 @@
             return;
 
           main_file.id = resp.id;
-          main_file.name = resp.originalFilename;
+          main_file.name = resp.name;
           main_file.url = resp.webContentLink;
 
           retrieveAllFilesInFolder(resp.parents[0], function(files_list){
@@ -159,7 +159,7 @@
               if (files[i].kind == 'drive#file' && files[i].id != main_file_id) {
                 media_assets.push({
                   id: files[i].id,
-                  name: files[i].originalFilename,
+                  name: files[i].name,
                   url: files[i].webContentLink
                 });
               }
@@ -258,6 +258,7 @@
     </script>
     <script src="https://apis.google.com/js/client.js?onload=checkAuth">
     </script>
+    <script src="/filesystem.js" type="application/javascript"></script>
     <!--<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js">-->
     <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.js">
       jQuery(function(){
@@ -266,7 +267,7 @@
     </script>
   </head>
   <body>
-    <div id="authorize-div" style="display: block">
+    <div id="authorize-div" style="display: none">
       <span>Authorize access to Drive API</span>
       <!--Button for the user to click to initiate auth sequence -->
       <button id="authorize-button" style="display: block" onclick="triggerAuthFlow()">
