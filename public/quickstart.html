@@ -1,0 +1,272 @@
+<html>
+  <head>
+    <script type="text/javascript">
+      // Your Client ID can be retrieved from your project in the Google
+      // Developer Console, https://console.developers.google.com
+      var CLIENT_ID = '528064987445-5nm86u3vo37g3mt0oppvpnhr0g0or8ca.apps.googleusercontent.com';
+
+      var SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/drive.readonly'];
+
+      /**
+       * Check if current user has authorized this application.
+       */
+      function checkAuth() {
+        gapi.auth.authorize(
+          {
+            'client_id': CLIENT_ID,
+            'scope': SCOPES.join(' '),
+            'immediate': true
+          }, handleAuthResult);
+      }
+
+      /**
+       * Handle response from authorization server.
+       *
+       * @param {Object} authResult Authorization result.
+       */
+      function handleAuthResult(authResult) {
+        var authorizeDiv = document.getElementById('authorize-div');
+        if (authResult && !authResult.error) {
+          // Hide auth UI, then load client library.
+          authorizeDiv.style.display = 'none';
+          loadDriveApi();
+        } else {
+          // Show auth UI, allowing the user to initiate authorization by
+          // clicking authorize button.
+          authorizeDiv.style.display = 'inline';
+        }
+      }
+
+      /**
+       * Initiate auth flow in response to user clicking authorize button.
+       */
+      function triggerAuthFlow() {
+        gapi.auth.authorize(
+          {client_id: CLIENT_ID, scope: SCOPES, immediate: false},
+          handleAuthResult);
+        return false;
+      }
+
+      function getParameterByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+                results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+
+      /**
+       * Load Drive API client library.
+       */
+      function loadDriveApi() {
+        gapi.client.load('drive', 'v3', /*listFiles*/ drawContent);
+      }
+//http://localhost/quickstart.html?state={%22ids%22:[%220B2OmpUh0ZJEhUzVUdkRoX082bHM%22],%22action%22:%22open%22,%22userId%22:%22107798750113362777968%22}
+      function retrieveAllFilesInFolder(folderId, callback) {
+        var retrievePageOfChildren = function(request, result) {
+          request.execute(function(resp) {
+            result.push(resp.files);
+            var nextPageToken = resp.nextPageToken;
+            if (nextPageToken) {
+              request = gapi.client.drive.files.list({
+                'q' : "'"+folderId+"' in parents",
+                'pageToken': nextPageToken,
+                'fields': "files(id,originalFilename,webContentLink,kind)"
+              });
+              retrievePageOfChildren(request, result);
+            } else {
+              callback(result);
+            }
+          });
+        };
+        var initialRequest = gapi.client.drive.files.list({
+          'q' : "'"+folderId+"' in parents",
+          'fields': "files(id,originalFilename,webContentLink,kind)"
+        });
+        retrievePageOfChildren(initialRequest, []);
+      }
+
+      function fetchMainFile(main_file_data) {
+        var mainFileContent = '';
+        jQuery.ajax({
+          url: main_file_data.url,
+          method: "GET",
+          async: true,
+          crossDomain: true,
+          success: function(data) {
+            return mainFileContent = data;
+          },
+          error: function(jqXHR, exception) {
+            return console.warn(jqXHR, exception);
+          }
+        });
+        if (typeof mainFileContent !== 'string') {
+          mainFileContent = "<span class='center'><h1>Invalid file format</h1></span>";
+        }
+        return mainFileContent;
+      }
+
+      function fetchFilesBuildContentAndDraw(main_file_id) {
+        var media_assets = [];
+        var main_file = {
+          id: null,
+          name: '',
+          url: ''
+        };
+
+        var main_request = gapi.client.drive.files.get({
+          'fileId': main_file_id,
+          'fields': "id,webContentLink,parents,originalFilename,fileExtension,kind"
+        });
+
+        main_request.execute(function(resp) {
+          if (!resp)
+            return;
+
+          // Process only 'htm' or 'html' files
+          if (!resp.fileExtension.toLowerCase().match(/^html?$/))
+            return;
+
+          main_file.id = resp.id;
+          main_file.name = resp.originalFilename;
+          main_file.url = resp.webContentLink;
+
+          retrieveAllFilesInFolder(resp.parents[0], function(files){
+            for (var i = 0; i < files.length; i++) {
+              if (files[i].kind == 'drive#file' && files[i].id != main_file_id) {
+                media_assets.push({
+                  id: files[i].id,
+                  name: files[i].originalFilename,
+                  url: files[i].webContentLink
+                });
+              }
+            }
+
+            // Final data for all files
+            var files_data = {
+              main_file: main_file,
+              media_assets: media_assets
+            };
+
+            // Build content
+            var $content = $buildContent(files_data);
+
+            // Draw
+            jQuery('#output').append($content);
+          });
+        });
+
+      }
+
+      function $buildContent(files_data) {
+        var html, $html, $media, reportPath, _i, _len, media, src, poster;
+
+        html = fetchMainFile(files_data.main_file);
+        $html = jQuery(html);
+        $media = $html.find('video, img');
+        /* for now, make all images relative to the report. */
+
+        var getMediaUrlFromDrive = function(originalAssetName) {
+          var media_assets = files_data.media_assets;
+          for (var i = 0; i < media_assets.length; i++) {
+            if (media_assets[i].name == originalAssetName) {
+              return media_assets[i].url;
+            }
+          }
+          return null;
+        };
+
+        for (_i = 0, _len = $media.length; _i < _len; _i++) {
+          media = $media[_i];
+          src = $(media).attr("src");
+          $(media).attr("src", (getMediaUrlFromDrive(src)));
+          poster = $(media).attr("poster");
+          if (poster) {
+            $(media).attr("poster", getMediaUrlFromDrive(poster));
+          }
+        }
+
+        return $html;
+      }
+
+      function drawContent() {
+        var file_id, $content;
+        var files_data;
+//        files_data = {
+//          main_file: {
+//            id: null,
+//            name: '',
+//            url: ''
+//          },
+//          media_assets: []
+//        };
+        try {
+          file_id = JSON.parse(getParameterByName('state')).ids[0];
+        } catch(e) {
+          return;
+        }
+        if (!file_id)
+          return;
+
+        fetchFilesBuildContentAndDraw(file_id);
+      }
+
+
+      /**
+       * Print files.
+       */
+      function listFiles() {
+        var request = gapi.client.drive.files.list({
+          'pageSize': 50,
+          'fields': "nextPageToken, files(id, name)"
+        });
+
+        request.execute(function(resp) {
+          appendPre('Files:');
+          var files = resp.files;
+          if (files && files.length > 0) {
+            for (var i = 0; i < files.length; i++) {
+              var file = files[i];
+              appendPre(file.name + ' (' + file.id + ')');
+            }
+          } else {
+            appendPre('No files found.');
+          }
+        });
+      }
+
+      /**
+       * Append a pre element to the body containing the given message
+       * as its text node.
+       *
+       * @param {string} message Text to be placed in pre element.
+       */
+      function appendPre(message) {
+        var pre = document.getElementById('output');
+        var textContent = document.createTextNode(message + '\n');
+        pre.appendChild(textContent);
+      }
+    </script>
+    <script src="https://apis.google.com/js/client.js?onload=checkAuth">
+    </script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js">
+      jQuery(function(){
+        triggerAuthFlow();
+      });
+    </script>
+  </head>
+  <body>
+    <div id="authorize-div" style="display: none">
+      <span>Authorize access to Drive API</span>
+      <!--Button for the user to click to initiate auth sequence -->
+      <button id="authorize-button" style="display: none" onclick="triggerAuthFlow()">
+        Authorize
+      </button>
+    </div>
+    <div id="output"></div>
+  </body>
+</html>
+
