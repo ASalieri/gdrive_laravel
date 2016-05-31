@@ -209,6 +209,8 @@ function Viewer() {
     _this.player = $video[0];
     _this.isPlaying = false;
     $video.bind('ended', function() {
+      _this.player.load();
+      _this.renderFrame(true);
       return _this.isPlaying = false;
     });
     $video.bind('pause', function() {
@@ -221,18 +223,18 @@ function Viewer() {
       _this.renderFrame(true);
     });
 
-    $('.wrapper-video').click(function() {
-      if (_this.player.currentTime === _this.player.duration) {
-        _this.player.currentTime = 0;
-        return _this.player.load();
-      } else {
-        if (_this.player.paused) {
-          return _this.player.play();
-        } else {
-          return _this.player.pause();
-        }
-      }
-    });
+    // $('.wrapper-video').click(function() {
+    //   if (_this.player.currentTime === _this.player.duration) {
+    //     _this.player.currentTime = 0;
+    //     return _this.player.load();
+    //   } else {
+    //     if (_this.player.paused) {
+    //       return _this.player.play();
+    //     } else {
+    //       return _this.player.pause();
+    //     }
+    //   }
+    // });
 
     _this.percentage = 0;
     return _this.requestId = window.requestAnimFrame(function() {

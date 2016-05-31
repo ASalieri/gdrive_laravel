@@ -41,7 +41,6 @@ function PlayheadView() {
     start = w * .2;
     width = w - start - (w * .148);
     x = start + width * _percentage;
-    console.log(x);
 
     this.cvs.height = h;
     this.ctx.beginPath();
