@@ -1,12 +1,151 @@
 <html>
   <head>
+    <title>NYSCI Noticing project viewer</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <style type="text/css">
+      body {
+        background-color: #76B3D0;
+      }
+      .main-content {
+        position: relative;
+        width: 70%;
+        margin: 0 auto 0;
+        background-color: #F1F1F1;
+        padding: 10px;
+        display: none;
+      }
+
+      .main-content video, .main-content img {
+        display:block;
+        height:auto;
+        max-width:100%;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+
+      .wrapper-video {
+        margin-bottom:40px;
+        cursor:pointer
+      }
+      .wrapper-playhead {
+        position: relative;
+        margin: 8px auto 60px;
+        width: 100%;
+      }
+/*      @media (min-width: 766px) {
+        .wrapper-playhead {
+          width: 736px;
+        }
+      }
+      @media (min-width: 993px) {
+        .wrapper-playhead {
+          width: 940px;
+        }
+      }
+      @media (min-width: 1201px) {
+        .wrapper-playhead {
+          width: 1070px;
+        }
+      }*/
+
+      .wrapper-playhead canvas {
+        position:absolute;
+        top:0px;
+        left:0px
+      }
+
+      .wrapper-playhead img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      /* PRELOADER --------------------------------------------------- */
+
+      .preloader {
+        min-height:150px;
+        position:absolute;
+        top:0px;
+        left:0px;
+        height:100%;
+        width:100%;
+        z-index:100;
+        overflow: hidden;
+      }
+      .preloader>div {
+        position:absolute;
+        top:30%;
+        right:0;
+        bottom:0;
+        left:50%;
+        margin-right:-25px;
+        margin-left:-25px
+      }
+      .loader {
+        margin:6em auto;
+        font-size:10px;
+        position:relative;
+        text-indent:-9999em;
+        border-top:1.1em solid rgba(255,255,255,0.2);
+        border-right:1.1em solid rgba(255,255,255,0.2);
+        border-bottom:1.1em solid rgba(255,255,255,0.2);
+        border-left:1.1em solid #ffffff;
+        -webkit-animation:loaderKeys 1.1s infinite linear;
+        animation:loaderKeys 1.1s infinite linear;
+        border-radius:50%;
+        width:10em;
+        height:10em
+      }
+      .loader:after {
+        border-radius:50%;
+        width:10em;
+        height:10em
+      }
+      @-webkit-keyframes loaderKeys {
+        0% {
+          -webkit-transform:rotate(0deg);
+          transform:rotate(0deg)
+        }
+        100% {
+          -webkit-transform:rotate(360deg);
+          transform:rotate(360deg)
+        }
+      }
+      @keyframes loaderKeys {
+        0% {
+          -webkit-transform:rotate(0deg);
+          transform:rotate(0deg)
+        }
+        100% {
+          -webkit-transform:rotate(360deg);
+          transform:rotate(360deg)
+        }
+      }
+    </style>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script type="text/javascript" src="/Viewer.js"></script>
+    <script type="text/javascript" src="/PlayheadView.js"></script>
+    <script type="text/javascript" src="/LoaderView.js"></script>
+
     <script type="text/javascript">
       // Your Client ID can be retrieved from your project in the Google
       // Developer Console, https://console.developers.google.com
       var CLIENT_ID = '528064987445-5nm86u3vo37g3mt0oppvpnhr0g0or8ca.apps.googleusercontent.com';
+      var SCOPES = [
+        'https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/drive.readonly'
+      ];
+      var viewer = null;
 
-      var SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly',
-        'https://www.googleapis.com/auth/drive.readonly'];
+      window.requestAnimFrame = (function() {
+        return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function(callback) {
+          window.setTimeout(callback, 1000 / 60);
+        };
+      })();
 
       /**
        * Check if current user has authorized this application.
@@ -35,6 +174,7 @@
           // Show auth UI, allowing the user to initiate authorization by
           // clicking authorize button.
           authorizeDiv.style.display = 'inline';
+//          triggerAuthFlow();
         }
       }
 
@@ -48,168 +188,28 @@
         return false;
       }
 
-      function getParameterByName(name, url) {
-        if (!url) url = window.location.href;
-        name = name.replace(/[\[\]]/g, "\\$&");
-        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-                results = regex.exec(url);
-        if (!results) return null;
-        if (!results[2]) return '';
-        return decodeURIComponent(results[2].replace(/\+/g, " "));
-      }
-
       /**
        * Load Drive API client library.
        */
       function loadDriveApi() {
-        gapi.client.load('drive', 'v3', /*listFiles*/ drawContent);
-      }
-//http://localhost/quickstart.html?state={%22ids%22:[%220B2OmpUh0ZJEhUzVUdkRoX082bHM%22],%22action%22:%22open%22,%22userId%22:%22107798750113362777968%22}
-      function retrieveAllFilesInFolder(folderId, callback) {
-        var retrievePageOfChildren = function(request, result) {
-          request.execute(function(resp) {
-            result.push(resp.files);
-            var nextPageToken = resp.nextPageToken;
-            if (nextPageToken) {
-              request = gapi.client.drive.files.list({
-                'q' : "'"+folderId+"' in parents",
-                'pageToken': nextPageToken,
-                'fields': "files(id,name,originalFilename,webContentLink,kind)"
-              });
-              retrievePageOfChildren(request, result);
-            } else {
-              callback(result);
-            }
-          });
-        };
-        var initialRequest = gapi.client.drive.files.list({
-          'q' : "'"+folderId+"' in parents",
-          'fields': "files(id,name,originalFilename,webContentLink,kind)"
-        });
-        retrievePageOfChildren(initialRequest, []);
-      }
-
-      function getFileHtmlContent(data) {
-        var mainFileContent = '';
-        if (data.content)
-          mainFileContent = data.content;
-
-        if (typeof mainFileContent !== 'string') {
-          mainFileContent = "<span class='center'><h1>Invalid file format</h1></span>";
-        }
-        return mainFileContent;
-      }
-
-      function jsonpCallback(data) {
-        var content, $content;
-        // Build content
-        content = getFileHtmlContent(data);
-        $content = $buildContent(files_data, content);
-        // Draw
-        jQuery('#output').append($content);
-      }
-
-      function triggerFetchingMainFile(files_data) {
-        var main_file_data = files_data.main_file;
-        jQuery.ajax({
-          url: main_file_data.url,
-          method: "GET",
-          async: false,
-          dataType: 'jsonp',
-          contentType: "application/octet-stream"
-        });
-      }
-      var files_data = {
-        main_file: {
-          id: null,
-          name: '',
-          url: ''
-        },
-        media_assets: []
-      };
-
-      function fetchFilesBuildContentAndDraw(main_file_id) {
-        var media_assets = [];
-        var main_file = {
-          id: null,
-          name: '',
-          url: ''
-        };
-
-        var main_request = gapi.client.drive.files.get({
-          'fileId': main_file_id,
-          'fields': "id,webContentLink,parents,name,originalFilename,fileExtension,kind"
-        });
-
-        main_request.execute(function(resp) {
-          if (!resp)
-            return;
-
-          // Process only 'json' or 'jsonp' files
-          if (!resp.fileExtension.toLowerCase().match(/^nysciwork?$/))
-            return;
-
-          main_file.id = resp.id;
-          main_file.name = resp.name;
-          main_file.url = resp.webContentLink;
-
-          retrieveAllFilesInFolder(resp.parents[0], function(files_list){
-            var files = files_list[0];
-            for (var i = 0; i < files.length; i++) {
-              if (files[i].kind == 'drive#file' && files[i].id != main_file_id) {
-                media_assets.push({
-                  id: files[i].id,
-                  name: files[i].name,
-                  url: files[i].webContentLink
-                });
-              }
-            }
-
-            // Final data for all files
-            files_data = {
-              main_file: main_file,
-              media_assets: media_assets
-            };
-
-            triggerFetchingMainFile(files_data);
-          });
-        });
-
-      }
-
-      function $buildContent(files_data, main_file_content) {
-        var $html, $media, _i, _len, media, src, poster;
-
-        $html = jQuery(main_file_content);
-        $media = $html.filter('video, img');
-        /* for now, make all images relative to the report. */
-
-        var getMediaUrlFromDrive = function(originalAssetName) {
-          var media_assets = files_data.media_assets;
-          for (var i = 0; i < media_assets.length; i++) {
-            if (media_assets[i].name == originalAssetName) {
-              return media_assets[i].url;
-            }
-          }
-          return null;
-        };
-
-        for (_i = 0, _len = $media.length; _i < _len; _i++) {
-          media = $media[_i];
-          src = $(media).attr("src");
-          $(media).attr("src", (getMediaUrlFromDrive(src)));
-          poster = $(media).attr("poster");
-          if (poster) {
-            $(media).attr("poster", getMediaUrlFromDrive(poster));
-          }
-        }
-
-        return $html;
+        gapi.client.load('drive', 'v3', drawContent);
       }
 
       function drawContent() {
-        var file_id;
+        var file_id, loader;
+        var getParameterByName = function(name, url) {
+          if (!url) url = window.location.href;
+          name = name.replace(/[\[\]]/g, "\\$&");
+          var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+          if (!results) return null;
+          if (!results[2]) return '';
+          return decodeURIComponent(results[2].replace(/\+/g, " "));
+        };
+
+        loader = new LoaderView();
         try {
+          loader.initialize('body');
           file_id = JSON.parse(getParameterByName('state')).ids[0];
         } catch(e) {
           return;
@@ -217,52 +217,22 @@
         if (!file_id)
           return;
 
-        fetchFilesBuildContentAndDraw(file_id);
+        viewer = new Viewer();
+        viewer.fetchFilesBuildContentAndDraw(file_id);
+        viewer.setContentLoadedCallback(loader.destroy);
       }
 
-
-      /**
-       * Print files.
-       */
-      function listFiles() {
-        var request = gapi.client.drive.files.list({
-          'pageSize': 50,
-          'fields': "nextPageToken, files(id, name)"
-        });
-
-        request.execute(function(resp) {
-          appendPre('Files:');
-          var files = resp.files;
-          if (files && files.length > 0) {
-            for (var i = 0; i < files.length; i++) {
-              var file = files[i];
-              appendPre(file.name + ' (' + file.id + ')');
-            }
-          } else {
-            appendPre('No files found.');
-          }
-        });
-      }
-
-      /**
-       * Append a pre element to the body containing the given message
-       * as its text node.
-       *
-       * @param {string} message Text to be placed in pre element.
-       */
-      function appendPre(message) {
-        var pre = document.getElementById('output');
-        var textContent = document.createTextNode(message + '\n');
-        pre.appendChild(textContent);
+      function jsonpCallback(data) {
+        if(viewer)
+          viewer.renderView(data);
       }
     </script>
-    <script src="https://apis.google.com/js/client.js?onload=checkAuth">
-    </script>
-    <script src="/filesystem.js" type="application/javascript"></script>
-    <!--<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js">-->
-    <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.js">
-      jQuery(function(){
-        triggerAuthFlow();
+
+    <!--<script type="text/javascript" src="https://apis.google.com/js/client.js?onload=checkAuth"></script>-->
+    <script type="text/javascript">
+      jQuery(function() {
+        jQuery.getScript("https://apis.google.com/js/client.js?onload=checkAuth");
+//        triggerAuthFlow();
       });
     </script>
   </head>
@@ -274,7 +244,7 @@
         Authorize
       </button>
     </div>
-    <div id="output"></div>
+    <div class="main-content"></div>
   </body>
 </html>
 
