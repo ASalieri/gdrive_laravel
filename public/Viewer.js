@@ -72,9 +72,8 @@ function Viewer() {
         });
 
         request.execute(function(resp) {
-          if (resp && resp.files && resp.files[0]) {
-            callback(resp.files[0].id);
-          }
+          var resource_id = (resp && resp.files && resp.files[0]) ? resp.files[0].id : null;
+          callback(resource_id);
         })
       };
 
@@ -128,11 +127,15 @@ function Viewer() {
       };
 
 
-      fetchResourcesDirId(resp.parents[0], function (resources_id) {
-        retrieveAllFilesInFolder(resources_id, function(files_list) {
-          self.media_assets = getMediaAsstesData(files_list[0]);
+      fetchResourcesDirId(resp.parents[0], function (resource_id) {
+        if (resource_id) {
+          retrieveAllFilesInFolder(resource_id, function(files_list) {
+            self.media_assets = getMediaAsstesData(files_list[0]);
+            triggerFetchingMainFile(self.files_data);
+          });
+        } else {
           triggerFetchingMainFile(self.files_data);
-        });
+        }
       });
     });
   };
@@ -198,7 +201,7 @@ function Viewer() {
 
     self.contentLoadedCallback();
 
-    $('.main-content').show();
+    $('.main-content').hide().fadeIn("fast");
   };
 
   self.setCoreographVideoControls = function () {

@@ -1,19 +1,19 @@
 <html>
   <head>
+    <meta charset="utf-8" />
     <title>NYSCI Noticing project viewer</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
     <style type="text/css">
-      body {
-        background-color: #76B3D0;
-      }
       .main-content {
         position: relative;
         width: 70%;
         margin: 0 auto 0;
         background-color: #F1F1F1;
         padding: 10px;
-        height: 100%;
         display: none;
+      }
+      body {
+        background-color: #76B3D0;
       }
 
       .main-content video, .main-content img {
@@ -35,21 +35,6 @@
         margin: 8px auto 60px;
         width: 100%;
       }
-/*      @media (min-width: 766px) {
-        .wrapper-playhead {
-          width: 736px;
-        }
-      }
-      @media (min-width: 993px) {
-        .wrapper-playhead {
-          width: 940px;
-        }
-      }
-      @media (min-width: 1201px) {
-        .wrapper-playhead {
-          width: 1070px;
-        }
-      }*/
 
       .wrapper-playhead canvas {
         position:absolute;
@@ -175,7 +160,6 @@
           // Show auth UI, allowing the user to initiate authorization by
           // clicking authorize button.
           authorizeDiv.style.display = 'inline';
-//          triggerAuthFlow();
         }
       }
 
@@ -186,7 +170,6 @@
         gapi.auth.authorize(
           {client_id: CLIENT_ID, scope: SCOPES, immediate: false},
           handleAuthResult);
-        return false;
       }
 
       /**
@@ -215,8 +198,11 @@
         } catch(e) {
           return;
         }
-        if (!file_id)
+
+        if (!file_id) {
+          alert("File not found.");
           return;
+        }
 
         viewer = new Viewer();
         viewer.fetchFilesBuildContentAndDraw(file_id);
@@ -233,7 +219,6 @@
     <script type="text/javascript">
       jQuery(function() {
         jQuery.getScript("https://apis.google.com/js/client.js?onload=checkAuth");
-//        triggerAuthFlow();
       });
     </script>
   </head>
@@ -248,4 +233,3 @@
     <div class="main-content"></div>
   </body>
 </html>
-
