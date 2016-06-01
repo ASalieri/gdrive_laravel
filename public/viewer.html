@@ -180,7 +180,7 @@
       }
 
       function drawContent() {
-        var file_id, loader;
+        var file_id;
         var getParameterByName = function(name, url) {
           if (!url) url = window.location.href;
           name = name.replace(/[\[\]]/g, "\\$&");
@@ -191,9 +191,7 @@
           return decodeURIComponent(results[2].replace(/\+/g, " "));
         };
 
-        loader = new LoaderView();
         try {
-          loader.initialize('body');
           file_id = JSON.parse(getParameterByName('state')).ids[0];
         } catch(e) {
           return;
@@ -217,7 +215,10 @@
 
     <!--<script type="text/javascript" src="https://apis.google.com/js/client.js?onload=checkAuth"></script>-->
     <script type="text/javascript">
+      var loader;
       jQuery(function() {
+        loader = new LoaderView();
+        loader.initialize('body');
         jQuery.getScript("https://apis.google.com/js/client.js?onload=checkAuth");
       });
     </script>
